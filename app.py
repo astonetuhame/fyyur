@@ -380,31 +380,42 @@ def edit_artist_submission(artist_id):
 
     return redirect(url_for('show_artist', artist_id=artist_id))
 
-    # TODO: take values from the form submitted, and update existing
-    # venue record with ID <venue_id> using the new attributes
-    return redirect(url_for('show_venue', venue_id=venue_id))
 
-#  Create Artist
-#  ----------------------------------------------------------------
-
+#  Create Artist GET
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
     form = ArtistForm()
     return render_template('forms/new_artist.html', form=form)
 
+#  Create Artist POST
+
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
-    # called upon submitting the new artist listing form
-    # TODO: insert form data as a new Venue record in the db, instead
-    # TODO: modify data to be the data object returned from db insertion
+    artist = Artist()
+    for field in request.form:
+        if field == 'genres':
+            setattr(artist, field, request.form.getlist(field))
+        elif field == 'seeking_venue':
+            setattr(artist, field, True if request.form.get(
+                field) in ('y', True, 't', 'True') else False)
+        else:
+            setattr(artist, field, request.form.get(field))
 
-    # on successful db insert, flash success
-    flash('Artist ' + request.form['name'] + ' was successfully listed!')
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-    return render_template('pages/home.html')
+    try:
+        db.session.add(artist)
+        db.session.commit()
+        flash('Artist ' + request.form['name'] + ' was successfully listed!')
+    except:
+        db.session.rollback()
+        flash('An error occurred. Artist ' +
+              artist.name + ' could not be listed.')
+        # return render_template('pages/home.html')
+    finally:
+        db.session.close()
+
+    return redirect(url_for('artists'))
 
 
 #  Shows
