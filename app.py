@@ -1,6 +1,6 @@
-#----------------------------------------------------------------------------#
+# --------------------------------------------------------- #
 # Imports
-#----------------------------------------------------------------------------#
+# --------------------------------------------------------- #
 
 import dateutil.parser
 import babel
@@ -12,25 +12,29 @@ from sqlalchemy import distinct
 from sqlalchemy.exc import SQLAlchemyError
 from models import *
 
-#----------------------------------------------------------------------------#
+# ---------------------------------------------------------- #
 # Filters.
-#----------------------------------------------------------------------------#
+# ---------------------------------------------------------- #
 
 
 def format_datetime(value, format='medium'):
-    date = dateutil.parser.parse(value)
+    print(type(value))
+    if isinstance(value, str):
+        date = dateutil.parser.parse(value)
+    else:
+        date = value
     if format == 'full':
         format = "EEEE MMMM, d, y 'at' h:mma"
     elif format == 'medium':
         format = "EE MM, dd, y h:mma"
-    return babel.dates.format_datetime(date, format, locale='en')
+    return babel.dates.format_datetime(date, format)
 
 
 app.jinja_env.filters['datetime'] = format_datetime
 
-#----------------------------------------------------------------------------#
+# ---------------------------------------------------------- #
 # Controllers.
-#----------------------------------------------------------------------------#
+# ---------------------------------------------------------- #
 
 
 @app.route('/')
@@ -80,7 +84,9 @@ def search_venues():
         "data": data
     }
 
-    return render_template('pages/search_venues.html', results=response, search_term=search_term)
+    return render_template('pages/search_venues.html',
+                           results=response,
+                           search_term=search_term)
 
 # Venue View Specific
 
@@ -99,7 +105,8 @@ def show_venue(venue_id):
             "phone": venue.phone,
             "website_link": venue.website_link,
             "facebook_link": venue.facebook_link,
-            "seeking_talent": True if venue.seeking_talent in (True, 't', 'True') else False,
+            "seeking_talent": True if venue.seeking_talent
+            in (True, 't', 'True') else False,
             "seeking_description": venue.seeking_description,
             "image_link": venue.image_link if venue.image_link else "",
             "past_shows_count": venue.num_past_shows,
@@ -217,26 +224,24 @@ def edit_venue_submission(venue_id):
 # Delete Venue
 
 
-@app.route('/venues/<venue_id>/delete', methods=['DELETE'])
+@app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
-    venue = Venue.query.get(venue_id)
     try:
-        # venue.delete()
+        # Get venue by ID
+        venue = Venue.query.get(venue_id)
+        venue_name = venue.name
+
         db.session.delete(venue)
         db.session.commit()
-        flash('Venue ' + venue.name + ' was successfully deleted!')
 
-    except SQLAlchemyError as e:
-        error = str(e.__dict__['orig'])
-        flash('An error occurred. Venue ' +
-              venue.name + ' could not be deleted.')
+        flash('Venue ' + venue_name + ' was deleted')
+    except SQLAlchemyError:
+        flash('an error occured and Venue ' + venue_name + ' was not deleted')
         db.session.rollback()
-        return None
-
     finally:
         db.session.close()
 
-    return None  # render_template('pages/home.html')
+    return redirect(url_for('index'))
 
 
 #  Artists
@@ -268,7 +273,9 @@ def search_artists():
         "count": artist_count,
         "data": data
     }
-    return render_template('pages/search_artists.html', results=response, search_term=search_term)
+    return render_template('pages/search_artists.html',
+                           results=response,
+                           search_term=search_term)
 
 # View specific artist
 
@@ -302,7 +309,8 @@ def show_artist(artist_id):
         "city": artist.city,
         "state": artist.state,
         "phone": artist.phone,
-        "seeking_venue": True if artist.seeking_venue in ('y', True, 't', 'True') else False,
+        "seeking_venue": True if artist.seeking_venue in
+        ('y', True, 't', 'True') else False,
         "seeking_description": artist.seeking_description,
         # "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
         "image_link": artist.image_link,
@@ -384,7 +392,7 @@ def create_artist_submission():
         db.session.add(artist)
         db.session.commit()
         flash('Artist ' + request.form['name'] + ' was successfully listed!')
-    except:
+    except SQLAlchemyError:
         db.session.rollback()
         flash('An error occurred. Artist ' +
               artist.name + ' could not be listed.')
@@ -405,7 +413,10 @@ def shows():
         Venue, (Venue.id == Show.venue_id)
     ).join(
         Artist, (Artist.id == Show.artist_id)
-    ).with_entities(Show.venue_id, Venue.name.label('venue_name'), Show.artist_id, Artist.name.label('artist_name'), Artist.image_link, Show.start_time)
+    ).with_entities(Show.venue_id,
+                    Venue.name.label('venue_name'),
+                    Show.artist_id, Artist.name.label('artist_name'),
+                    Artist.image_link, Show.start_time)
 
     data = []
     for x in query:
@@ -418,7 +429,7 @@ def shows():
             "start_time": x.start_time
         })
 
-    return render_template('pages/shows.html', shows=data)
+        return render_template('pages/shows.html', shows=data)
 
 
 @app.route('/shows/create')
@@ -427,7 +438,8 @@ def create_shows():
     form = ShowForm()
     form.artist_id.query = Artist.query
     form.venue_id.choices = [
-        (v.id, v.name + ' ({}, {})'.format(v.city, v.state)) for v in Venue.query]
+        (v.id, v.name + ' ({}, {})'.format(v.city, v.state))
+        for v in Venue.query]
     return render_template('forms/new_show.html', form=form)
 
 # Create Show
@@ -470,16 +482,17 @@ if not app.debug:
     file_handler = FileHandler('error.log')
     file_handler.setFormatter(
         Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+            '%(asctime)s %(levelname)s: %(message)s '
+            '[in %(pathname)s:%(lineno)d]')
     )
     app.logger.setLevel(logging.INFO)
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
     app.logger.info('errors')
 
-#----------------------------------------------------------------------------#
+# ------------------------------------------------------------- #
 # Launch.
-#----------------------------------------------------------------------------#
+# ------------------------------------------------------------- #
 
 # Default port:
 if __name__ == '__main__':
