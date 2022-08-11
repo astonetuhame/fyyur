@@ -195,10 +195,52 @@ def create_venue_submission():
 
     return redirect(url_for('venues'))
 
+# Update Venue (GET)
+
+
+@app.route('/venues/<int:venue_id>/edit', methods=['GET'])
+def edit_venue(venue_id):
+    venue = Venue.query.get(venue_id)
+    form = VenueForm(obj=venue)
+
+    return render_template('forms/edit_venue.html', form=form, venue=venue)
+
+# Update Venue (POST)
+
+
+@app.route('/venues/<int:venue_id>/edit', methods=['POST'])
+def edit_venue_submission(venue_id):
+    venue = Venue.query.get(venue_id)
+    for field in request.form:
+        if field == 'genres':
+            setattr(venue, field, request.form.getlist(field))
+        elif field == 'seeking_talent':
+            setattr(venue, field, True if request.form.get(
+                field) in ('y', True, 't', 'True') else False)
+        else:
+            setattr(venue, field, request.form.get(field))
+    try:
+        db.session.add(venue)
+        db.session.commit()
+        flash('Venue ' + request.form['name'] + ' was successfully listed!')
+
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        flash('An error occurred. Show could not be listed. \n' + error)
+        db.session.rollback()
+        flash('An error occurred. Venue ' +
+              venue.name + ' could not be listed.')
+        return render_template('pages/home.html')
+
+    finally:
+        db.session.close()
+
+    return redirect(url_for('show_venue', venue_id=venue_id))
+
 # Delete Venue
 
 
-@app.route('/venues/<venue_id>', methods=['DELETE'])
+@app.route('/venues/<venue_id>/delete', methods=['DELETE'])
 def delete_venue(venue_id):
     venue = Venue.query.get(venue_id)
     try:
