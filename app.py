@@ -18,6 +18,7 @@ from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.types import ARRAY
 from flask_migrate import Migrate
 from sqlalchemy import distinct
+from sqlalchemy.exc import SQLAlchemyError
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -105,6 +106,8 @@ def search_venues():
     return render_template('pages/search_venues.html', results=response, search_term=search_term)
 
 # Venue View Specific
+
+
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
     venue = Venue.query.get(venue_id)
@@ -148,7 +151,6 @@ def show_venue(venue_id):
 
     data["past_shows"] = past_shows
     data["upcoming_shows"] = upcoming_shows
-    #data = list(filter(lambda d: d['id'] == venue_id, venues))[0]
 
     return render_template('pages/show_venue.html', venue=data)
 
@@ -161,18 +163,38 @@ def create_venue_form():
     form = VenueForm()
     return render_template('forms/new_venue.html', form=form)
 
+#  Create Venue
+
 
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-    # TODO: insert form data as a new Venue record in the db, instead
-    # TODO: modify data to be the data object returned from db insertion
+    venue = Venue()
+    for field in request.form:
+        if field == 'genres':
+            setattr(venue, field, request.form.getlist(field))
+        elif field == 'seeking_talent':
+            setattr(venue, field, True if request.form.get(
+                field) in ('y', True, 't', 'True') else False)
+        else:
+            setattr(venue, field, request.form.get(field))
 
-    # on successful db insert, flash success
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-    return render_template('pages/home.html')
+    try:
+        db.session.add(venue)
+        db.session.commit()
+        flash('Venue ' + request.form['name'] + ' was successfully listed!')
+
+    except SQLAlchemyError as e:
+        error = str(e.__dict__['orig'])
+        flash('An error occurred. Show could not be listed. \n' + error)
+        db.session.rollback()
+        flash('An error occurred. Venue ' +
+              venue.name + ' could not be listed.')
+        return render_template('pages/home.html')
+
+    finally:
+        db.session.close()
+
+    return redirect(url_for('venues'))
 
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
