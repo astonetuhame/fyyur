@@ -2,7 +2,6 @@
 # Imports
 #----------------------------------------------------------------------------#
 
-from models import *
 import json
 import dateutil.parser
 import babel
@@ -19,21 +18,7 @@ from sqlalchemy.types import ARRAY
 from flask_migrate import Migrate
 from sqlalchemy import distinct
 from sqlalchemy.exc import SQLAlchemyError
-#----------------------------------------------------------------------------#
-# App Config.
-#----------------------------------------------------------------------------#
-
-app = Flask(__name__)
-moment = Moment(app)
-app.config.from_object('config')
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-# TODO: connect to a local postgresql database
-
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
+from models import *
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -154,7 +139,7 @@ def show_venue(venue_id):
 
     return render_template('pages/show_venue.html', venue=data)
 
-#  Create Venue GET
+#  Create Venue (GET)
 
 
 @app.route('/venues/create', methods=['GET'])
@@ -162,7 +147,7 @@ def create_venue_form():
     form = VenueForm()
     return render_template('forms/new_venue.html', form=form)
 
-#  Create Venue
+#  Create Venue (POST)
 
 
 @app.route('/venues/create', methods=['POST'])
@@ -381,14 +366,14 @@ def edit_artist_submission(artist_id):
     return redirect(url_for('show_artist', artist_id=artist_id))
 
 
-#  Create Artist GET
+#  Create Artist (GET)
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
     form = ArtistForm()
     return render_template('forms/new_artist.html', form=form)
 
-#  Create Artist POST
+#  Create Artist (POST)
 
 
 @app.route('/artists/create', methods=['POST'])
